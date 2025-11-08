@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공항 대설 대응 보고 - 입력</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>공항 대설 대응 보고</h1>
+        
+        <form id="reportForm">
+            <!-- 기본 정보 - 한 줄로 -->
+            <div class="section compact-section">
+                <h2>기본 정보</h2>
+                <div class="form-row compact-row">
+                    <div class="form-group compact-group">
+                        <label for="airport">공항 <span class="required">*</span></label>
+                        <select id="airport" name="airport" required>
+                            <option value="">선택하세요</option>
+                            {% for airport in airports %}
+                            <option value="{{ airport }}">{{ airport }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="form-group compact-group">
+                        <label for="report_date">보고 일자 <span class="required">*</span></label>
+                        <input type="date" id="report_date" name="report_date" required>
+                    </div>
+                    
+                    <div class="form-group compact-group">
+                        <label for="report_time">보고 시간 <span class="required">*</span></label>
+                        <select id="report_time" name="report_time" required>
+                            <option value="">선택하세요</option>
+                            {% for time in report_times %}
+                            <option value="{{ time }}">{{ time }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 기상상황 - 컴팩트하게 -->
+            <div class="section compact-section">
+                <h2>기상상황</h2>
+                <div class="form-row compact-row">
+                    <div class="form-group compact-group">
+                        <label for="snowfall_area">강설지역</label>
+                        <input type="text" id="snowfall_area" name="snowfall_area" placeholder="예: 인천">
+                    </div>
+                    
+                    <div class="form-group compact-group">
+                        <label for="snowfall_amount">적설량</label>
+                        <input type="text" id="snowfall_amount" name="snowfall_amount" placeholder="예: 7cm">
+                    </div>
+                    
+                    <div class="form-group compact-group">
+                        <label for="cumulative_snowfall">누적 적설량</label>
+                        <input type="text" id="cumulative_snowfall" name="cumulative_snowfall" placeholder="예: 12cm">
+                    </div>
+                </div>
+                
+                <div class="form-group compact-group">
+                    <label>대설 특보</label>
+                    <div class="checkbox-group compact-checkbox">
+                        <label><input type="checkbox" name="preliminary_warning" value="true"> 대설 예비특보</label>
+                        <label><input type="checkbox" name="advisory" value="true"> 주의보</label>
+                        <label><input type="checkbox" name="warning" value="true"> 경보</label>
+                        <label><input type="checkbox" name="no_special_notes" value="true"> 특이사항 없음</label>
+                    </div>
+                </div>
+                
+                <div class="form-group compact-group">
+                    <label for="special_notes">특이사항</label>
+                    <textarea id="special_notes" name="special_notes" rows="2" placeholder="특이사항을 입력하세요"></textarea>
+                </div>
+            </div>
+
+            <!-- 항공기 운항 현황 - 통합 테이블 -->
+            <div class="section compact-section">
+                <h2>항공기 운항 현황</h2>
+                <div class="flight-table compact-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th rowspan="2">구분</th>
+                                <th colspan="3">계획</th>
+                                <th colspan="3">결항</th>
+                            </tr>
+                            <tr>
+                                <th>계</th>
+                                <th>금일계획</th>
+                                <th>사전취소</th>
+                                <th>계</th>
+                                <th>금일취소</th>
+                                <th>사전취소</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>국제선</strong></td>
+                                <td><input type="number" name="int_planned_total" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="int_planned_today" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="int_pre_cancelled" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="int_cancelled_total" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="int_cancelled_today" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="int_cancelled_pre" min="0" value="0" class="compact-input"></td>
+                            </tr>
+                            <tr>
+                                <td><strong>국내선</strong></td>
+                                <td><input type="number" name="dom_planned_total" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="dom_planned_today" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="dom_pre_cancelled" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="dom_cancelled_total" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="dom_cancelled_today" min="0" value="0" class="compact-input"></td>
+                                <td><input type="number" name="dom_cancelled_pre" min="0" value="0" class="compact-input"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 주요 조치사항 - 한 줄로 -->
+            <div class="section compact-section">
+                <h2>주요 조치사항</h2>
+                <div class="form-row compact-row">
+                    <div class="form-group compact-group">
+                        <label for="snow_removal">제설</label>
+                        <textarea id="snow_removal" name="snow_removal" rows="2" placeholder="제설 조치사항"></textarea>
+                    </div>
+                    
+                    <div class="form-group compact-group">
+                        <label for="deicing">제방빙</label>
+                        <textarea id="deicing" name="deicing" rows="2" placeholder="제방빙 조치사항"></textarea>
+                    </div>
+                    
+                    <div class="form-group compact-group">
+                        <label for="other_actions">기타</label>
+                        <textarea id="other_actions" name="other_actions" rows="2" placeholder="기타 조치사항"></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 피해 및 복구 -->
+            <div class="section compact-section">
+                <h2>피해 및 복구</h2>
+                <div class="form-group compact-group">
+                    <label for="damage_recovery">피해 및 복구 상황</label>
+                    <textarea id="damage_recovery" name="damage_recovery" rows="3" placeholder="피해 및 복구 상황을 입력하세요"></textarea>
+                </div>
+            </div>
+
+            <!-- 제출 버튼 -->
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">보고 제출</button>
+                <button type="button" class="btn btn-secondary" onclick="resetForm()">초기화</button>
+                <a href="/airport/view" class="btn btn-link">조회 화면으로</a>
+            </div>
+        </form>
+
+        <!-- 메시지 표시 영역 -->
+        <div id="message" class="message"></div>
+    </div>
+
+    <script>
+        // 오늘 날짜를 기본값으로 설정
+        document.getElementById('report_date').valueAsDate = new Date();
+
+        // 폼 제출 처리
+        document.getElementById('reportForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const data = {
+                airport: formData.get('airport'),
+                report_date: formData.get('report_date'),
+                report_time: formData.get('report_time'),
+                weather: {
+                    snowfall_area: formData.get('snowfall_area'),
+                    snowfall_amount: formData.get('snowfall_amount'),
+                    cumulative_snowfall: formData.get('cumulative_snowfall'),
+                    preliminary_warning: formData.get('preliminary_warning') === 'true',
+                    advisory: formData.get('advisory') === 'true',
+                    warning: formData.get('warning') === 'true',
+                    special_notes: formData.get('special_notes')
+                },
+                flight_status: {
+                    international: {
+                        planned_total: formData.get('int_planned_total'),
+                        planned_today: formData.get('int_planned_today'),
+                        pre_cancelled: formData.get('int_pre_cancelled'),
+                        cancelled_total: formData.get('int_cancelled_total'),
+                        cancelled_today: formData.get('int_cancelled_today'),
+                        cancelled_pre: formData.get('int_cancelled_pre')
+                    },
+                    domestic: {
+                        planned_total: formData.get('dom_planned_total'),
+                        planned_today: formData.get('dom_planned_today'),
+                        pre_cancelled: formData.get('dom_pre_cancelled'),
+                        cancelled_total: formData.get('dom_cancelled_total'),
+                        cancelled_today: formData.get('dom_cancelled_today'),
+                        cancelled_pre: formData.get('dom_cancelled_pre')
+                    }
+                },
+                actions: {
+                    snow_removal: formData.get('snow_removal'),
+                    deicing: formData.get('deicing'),
+                    other: formData.get('other_actions')
+                },
+                damage_recovery: formData.get('damage_recovery')
+            };
+
+            try {
+                const response = await fetch('/api/report', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    showMessage('보고가 성공적으로 제출되었습니다!', 'success');
+                    setTimeout(() => {
+                        if (confirm('조회 화면으로 이동하시겠습니까?')) {
+                            window.location.href = '/airport/view';
+                        }
+                    }, 1000);
+                } else {
+                    showMessage(result.message || '제출에 실패했습니다.', 'error');
+                }
+            } catch (error) {
+                showMessage('오류가 발생했습니다: ' + error.message, 'error');
+            }
+        });
+
+        function resetForm() {
+            document.getElementById('reportForm').reset();
+            document.getElementById('report_date').valueAsDate = new Date();
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = 'message ' + type;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>
+

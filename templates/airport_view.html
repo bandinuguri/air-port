@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>공항 대설 대응 보고 - 조회</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>공항별 보고 조회</h1>
+        
+        <!-- 필터 -->
+        <div class="filter-section">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="filter_airport">공항</label>
+                    <select id="filter_airport">
+                        <option value="">전체</option>
+                        {% for airport in airports %}
+                        <option value="{{ airport }}">{{ airport }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="filter_date">보고 일자</label>
+                    <input type="date" id="filter_date">
+                </div>
+                
+                <div class="form-group">
+                    <button onclick="loadReports()" class="btn btn-primary">조회</button>
+                    <a href="/" class="btn btn-link">입력 화면으로</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- 보고 목록 -->
+        <div id="reportsList" class="reports-list">
+            <p class="empty-message">조회 조건을 선택하고 조회 버튼을 클릭하세요.</p>
+        </div>
+    </div>
+
+    <script>
+        // 오늘 날짜를 기본값으로 설정
+        document.getElementById('filter_date').valueAsDate = new Date();
+
+        async function loadReports() {
+            const airport = document.getElementById('filter_airport').value;
+            const date = document.getElementById('filter_date').value;
+            
+            let url = '/api/reports?';
+            if (airport) url += 'airport=' + encodeURIComponent(airport) + '&';
+            if (date) url += 'report_date=' + encodeURIComponent(date);
+            
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayReports(result.data);
+                } else {
+                    document.getElementById('reportsList').innerHTML = 
+                        '<p class="error-message">' + (result.message || '조회에 실패했습니다.') + '</p>';
+                }
+            } catch (error) {
+                document.getElementById('reportsList').innerHTML = 
+                    '<p class="error-message">오류가 발생했습니다: ' + error.message + '</p>';
+            }
+        }
+
+        function displayReports(reports) {
+            const container = document.getElementById('reportsList');
+            
+            if (reports.length === 0) {
+                container.innerHTML = '<p class="empty-message">조회된 보고가 없습니다.</p>';
+                return;
+            }
+            
+            let html = '<div class="reports-grid">';
+            
+            reports.forEach(report => {
+                const weather = report.weather || {};
+                const flight = report.flight_status || {};
+                const intFlight = flight.international || {};
+                const domFlight = flight.domestic || {};
+                const actions = report.actions || {};
+                
+                html += `
+                    <div class="report-card">
+                        <div class="report-header">
+                            <h3>${report.airport} 공항</h3>
+                            <span class="report-meta">${report.report_date} ${report.report_time}</span>
+                        </div>
+                        
+                        <div class="report-content">
+                            <div class="report-section">
+                                <h4>기상상황</h4>
+                                <p><strong>강설지역:</strong> ${weather.snowfall_area || '-'}</p>
+                                <p><strong>적설량:</strong> ${weather.snowfall_amount || '-'} ${weather.cumulative_snowfall ? '(누적 ' + weather.cumulative_snowfall + ')' : ''}</p>
+                                <p><strong>특보:</strong> 
+                                    ${weather.preliminary_warning ? '대설 예비특보 ' : ''}
+                                    ${weather.advisory ? '주의보 ' : ''}
+                                    ${weather.warning ? '경보 ' : ''}
+                                    ${!weather.preliminary_warning && !weather.advisory && !weather.warning ? '없음' : ''}
+                                </p>
+                                ${weather.special_notes ? '<p><strong>특이사항:</strong> ' + weather.special_notes + '</p>' : ''}
+                            </div>
+                            
+                            <div class="report-section">
+                                <h4>항공기 운항 현황</h4>
+                                <p><strong>국제선:</strong> 계획 ${intFlight.planned_total || 0} / 결항 ${intFlight.cancelled_total || 0}</p>
+                                <p><strong>국내선:</strong> 계획 ${domFlight.planned_total || 0} / 결항 ${domFlight.cancelled_total || 0}</p>
+                            </div>
+                            
+                            ${actions.snow_removal ? '<div class="report-section"><h4>제설</h4><p>' + actions.snow_removal + '</p></div>' : ''}
+                            ${actions.deicing ? '<div class="report-section"><h4>제방빙</h4><p>' + actions.deicing + '</p></div>' : ''}
+                            ${actions.other ? '<div class="report-section"><h4>기타</h4><p>' + actions.other + '</p></div>' : ''}
+                            ${report.damage_recovery ? '<div class="report-section"><h4>피해 및 복구</h4><p>' + report.damage_recovery + '</p></div>' : ''}
+                        </div>
+                        
+                        <div class="report-footer">
+                            <small>제출시간: ${report.submitted_at}</small>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // 페이지 로드 시 자동 조회 (선택사항)
+        // loadReports();
+    </script>
+</body>
+</html>
+

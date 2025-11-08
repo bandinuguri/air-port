@@ -1,0 +1,82 @@
+[
+  {
+    "id": 1,
+    "airport": "인천",
+    "report_date": "2025-11-08",
+    "report_time": "11:10",
+    "weather": {
+      "snowfall_area": "",
+      "snowfall_amount": "8",
+      "cumulative_snowfall": "16",
+      "preliminary_warning": false,
+      "advisory": true,
+      "warning": false,
+      "special_notes": "특이 사항 없음"
+    },
+    "flight_status": {
+      "international": {
+        "planned_total": 0,
+        "planned_today": 13,
+        "pre_cancelled": 5,
+        "cancelled_total": 0,
+        "cancelled_today": 2,
+        "cancelled_pre": 3
+      },
+      "domestic": {
+        "planned_total": 0,
+        "planned_today": 0,
+        "pre_cancelled": 0,
+        "cancelled_total": 0,
+        "cancelled_today": 0,
+        "cancelled_pre": 0
+      }
+    },
+    "actions": {
+      "snow_removal": "제설 사항은 잘 했음.",
+      "deicing": "제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방빙제방",
+      "other": "기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기타기"
+    },
+    "damage_recovery": "별로 피해가 없어요",
+    "submitted_at": "2025-11-08 11:56:25"
+  },
+  {
+    "id": 2,
+    "airport": "김포",
+    "report_date": "2025-11-08",
+    "report_time": "11:10",
+    "weather": {
+      "snowfall_area": "",
+      "snowfall_amount": "2",
+      "cumulative_snowfall": "10",
+      "preliminary_warning": false,
+      "advisory": false,
+      "warning": false,
+      "special_notes": "특이사항 없음"
+    },
+    "flight_status": {
+      "international": {
+        "planned_total": 0,
+        "planned_today": 2,
+        "pre_cancelled": 3,
+        "cancelled_total": 0,
+        "cancelled_today": 1,
+        "cancelled_pre": 1
+      },
+      "domestic": {
+        "planned_total": 0,
+        "planned_today": 0,
+        "pre_cancelled": 0,
+        "cancelled_total": 0,
+        "cancelled_today": 0,
+        "cancelled_pre": 0
+      }
+    },
+    "actions": {
+      "snow_removal": "제설 없음",
+      "deicing": "제방빙 없음",
+      "other": "기타 없음"
+    },
+    "damage_recovery": "피해 복구 없음",
+    "submitted_at": "2025-11-08 12:03:29"
+  }
+]

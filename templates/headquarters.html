@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>본부 조회 화면</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>본부 조회 화면</h1>
+        
+        <!-- 헤더 및 필터 -->
+        <div class="header-section">
+            <div class="header-row">
+                <h2 id="reportTitle">정기 대설 대응 상황</h2>
+                <div class="filter-controls">
+                    <label class="filter-label">
+                        기준시간 : 
+                        <input type="date" id="filter_date" class="date-input" onchange="loadHeadquartersData()">
+                        <select id="filter_time" class="time-select" onchange="loadHeadquartersData()">
+                            <option value="">전체</option>
+                            {% for time in report_times %}
+                            <option value="{{ time }}">{{ time }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <button onclick="loadHeadquartersData()" class="btn btn-primary btn-small">조회</button>
+                </div>
+            </div>
+            <p class="note">* 정기보고 시간 : 05:10 / 11:10 / 17:10 / 22:10</p>
+        </div>
+
+        <!-- 기상상황 -->
+        <div class="section">
+            <h2>기상상황</h2>
+            <div id="weatherTable" class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>강설지역</th>
+                            <th>적설량</th>
+                            <th>대설 예비특보</th>
+                            <th>주의보</th>
+                            <th>경보</th>
+                            <th>특이사항 없음</th>
+                        </tr>
+                    </thead>
+                    <tbody id="weatherBody">
+                        <tr><td colspan="6" class="empty-message">조회 조건을 선택하고 조회 버튼을 클릭하세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">* 공항별 정기 보고 '기상상황 입력값' 출력</p>
+        </div>
+
+        <!-- 항공기 운항 현황 -->
+        <div class="section">
+            <h2>항공기 운항 현황</h2>
+            <div class="flight-filter">
+                <label><input type="checkbox" id="show_snow_only" onchange="loadHeadquartersData()"> 강설 공항</label>
+                <label><input type="checkbox" id="show_all" checked onchange="loadHeadquartersData()"> 모든 공항</label>
+            </div>
+            
+            <div id="flightSummary" class="summary-box"></div>
+            
+            <div id="flightTable" class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th rowspan="2">공항</th>
+                            <th rowspan="2">구분</th>
+                            <th colspan="3">계획</th>
+                            <th colspan="3">결항</th>
+                        </tr>
+                        <tr>
+                            <th>계</th>
+                            <th>금일계획</th>
+                            <th>사전취소</th>
+                            <th>계</th>
+                            <th>금일취소</th>
+                            <th>사전취소</th>
+                        </tr>
+                    </thead>
+                    <tbody id="flightBody">
+                        <tr><td colspan="8" class="empty-message">조회 조건을 선택하고 조회 버튼을 클릭하세요.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="note">* 디폴트 : [ ]/ 눈이 왔거나 대설 예비특보, 대설주의보, 대설경보 공항만 표기<br>
+            붉은색 텍스트 부분은 공사 입력 값을 취합/집계하여 출력</p>
+        </div>
+
+        <!-- 주요 조치사항 -->
+        <div class="section">
+            <h2>주요 조치사항</h2>
+            <div id="actionsList"></div>
+        </div>
+
+        <!-- 피해 및 복구 -->
+        <div class="section">
+            <h2>피해 및 복구</h2>
+            <div id="damageList"></div>
+        </div>
+    </div>
+
+    <script>
+        // 오늘 날짜를 기본값으로 설정
+        document.getElementById('filter_date').valueAsDate = new Date();
+        
+        // 페이지 로드 시 자동 조회
+        window.addEventListener('DOMContentLoaded', function() {
+            // 약간의 지연 후 자동 조회 (DOM이 완전히 로드된 후)
+            setTimeout(function() {
+                loadHeadquartersData();
+            }, 100);
+        });
+
+        async function loadHeadquartersData() {
+            const date = document.getElementById('filter_date').value;
+            const time = document.getElementById('filter_time').value;
+            const showSnowOnly = document.getElementById('show_snow_only').checked;
+            const showAll = document.getElementById('show_all').checked;
+            
+            if (!date) {
+                alert('기준시간(날짜)을 선택해주세요.');
+                return;
+            }
+            
+            // 제목 업데이트
+            const titleDate = date.replace(/-/g, '.').substring(2);
+            const titleTime = time || '전체';
+            document.getElementById('reportTitle').textContent = `'${titleDate} ${titleTime} 정기 대설 대응 상황`;
+            
+            try {
+                // 보고 데이터 조회
+                let url = '/api/reports?report_date=' + encodeURIComponent(date);
+                if (time) url += '&report_time=' + encodeURIComponent(time);
+                
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (result.data && result.data.length > 0) {
+                        displayHeadquartersData(result.data, showSnowOnly, showAll);
+                    } else {
+                        // 데이터가 없을 때 빈 메시지 표시
+                        document.getElementById('weatherBody').innerHTML = '<tr><td colspan="6" class="empty-message">조회된 데이터가 없습니다.</td></tr>';
+                        document.getElementById('flightBody').innerHTML = '<tr><td colspan="8" class="empty-message">조회된 데이터가 없습니다.</td></tr>';
+                        document.getElementById('flightSummary').innerHTML = '<p class="empty-message">조회된 데이터가 없습니다.</p>';
+                        document.getElementById('actionsList').innerHTML = '<p class="empty-message">조회된 데이터가 없습니다.</p>';
+                        document.getElementById('damageList').innerHTML = '<p class="empty-message">조회된 데이터가 없습니다.</p>';
+                    }
+                } else {
+                    alert(result.message || '조회에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('조회 오류:', error);
+                alert('오류가 발생했습니다: ' + error.message);
+            }
+        }
+
+        function displayHeadquartersData(reports, showSnowOnly, showAll) {
+            // 기상상황 테이블
+            const weatherBody = document.getElementById('weatherBody');
+            const weatherData = {};
+            
+            reports.forEach(report => {
+                const weather = report.weather || {};
+                if (showSnowOnly && !weather.snowfall_amount && !weather.cumulative_snowfall) {
+                    return;
+                }
+                
+                if (!weatherData[report.airport]) {
+                    weatherData[report.airport] = {
+                        airport: report.airport,
+                        snowfall_amount: weather.snowfall_amount || '',
+                        cumulative_snowfall: weather.cumulative_snowfall || '',
+                        preliminary_warning: weather.preliminary_warning || false,
+                        advisory: weather.advisory || false,
+                        warning: weather.warning || false,
+                        no_special: !weather.special_notes && !weather.preliminary_warning && !weather.advisory && !weather.warning
+                    };
+                }
+            });
+            
+            if (Object.keys(weatherData).length === 0) {
+                weatherBody.innerHTML = '<tr><td colspan="6" class="empty-message">데이터가 없습니다.</td></tr>';
+            } else {
+                let html = '';
+                Object.values(weatherData).forEach(data => {
+                    let snowfall = '';
+                    if (data.snowfall_amount) {
+                        snowfall = data.snowfall_amount;
+                        if (data.cumulative_snowfall) {
+                            snowfall += '(누적 ' + data.cumulative_snowfall + ')';
+                        }
+                    } else {
+                        snowfall = '-';
+                    }
+                    
+                    html += `
+                        <tr>
+                            <td>${data.airport}</td>
+                            <td>${snowfall}</td>
+                            <td>${data.preliminary_warning ? '✓' : ''}</td>
+                            <td>${data.advisory ? '✓' : ''}</td>
+                            <td>${data.warning ? '✓' : ''}</td>
+                            <td>${data.no_special ? '✓' : ''}</td>
+                        </tr>
+                    `;
+                });
+                weatherBody.innerHTML = html;
+            }
+            
+            // 항공기 운항 현황
+            const flightBody = document.getElementById('flightBody');
+            const flightSummary = document.getElementById('flightSummary');
+            const flightData = {};
+            let totalCancelled = 0;
+            let totalCancelledToday = 0;
+            let totalCancelledPre = 0;
+            const airportCancellations = {};
+            
+            reports.forEach(report => {
+                const weather = report.weather || {};
+                if (showSnowOnly && !weather.snowfall_amount && !weather.cumulative_snowfall) {
+                    return;
+                }
+                
+                if (!flightData[report.airport]) {
+                    flightData[report.airport] = {
+                        airport: report.airport,
+                        international: { planned: {}, cancelled: {} },
+                        domestic: { planned: {}, cancelled: {} },
+                        total: { planned: {}, cancelled: {} }
+                    };
+                    airportCancellations[report.airport] = 0;
+                }
+                
+                const flight = report.flight_status || {};
+                const intFlight = flight.international || {};
+                const domFlight = flight.domestic || {};
+                
+                // 국제선
+                flightData[report.airport].international.planned.total = (flightData[report.airport].international.planned.total || 0) + (intFlight.planned_total || 0);
+                flightData[report.airport].international.planned.today = (flightData[report.airport].international.planned.today || 0) + (intFlight.planned_today || 0);
+                flightData[report.airport].international.planned.pre = (flightData[report.airport].international.planned.pre || 0) + (intFlight.pre_cancelled || 0);
+                flightData[report.airport].international.cancelled.total = (flightData[report.airport].international.cancelled.total || 0) + (intFlight.cancelled_total || 0);
+                flightData[report.airport].international.cancelled.today = (flightData[report.airport].international.cancelled.today || 0) + (intFlight.cancelled_today || 0);
+                flightData[report.airport].international.cancelled.pre = (flightData[report.airport].international.cancelled.pre || 0) + (intFlight.cancelled_pre || 0);
+                
+                // 국내선
+                flightData[report.airport].domestic.planned.total = (flightData[report.airport].domestic.planned.total || 0) + (domFlight.planned_total || 0);
+                flightData[report.airport].domestic.planned.today = (flightData[report.airport].domestic.planned.today || 0) + (domFlight.planned_today || 0);
+                flightData[report.airport].domestic.planned.pre = (flightData[report.airport].domestic.planned.pre || 0) + (domFlight.pre_cancelled || 0);
+                flightData[report.airport].domestic.cancelled.total = (flightData[report.airport].domestic.cancelled.total || 0) + (domFlight.cancelled_total || 0);
+                flightData[report.airport].domestic.cancelled.today = (flightData[report.airport].domestic.cancelled.today || 0) + (domFlight.cancelled_today || 0);
+                flightData[report.airport].domestic.cancelled.pre = (flightData[report.airport].domestic.cancelled.pre || 0) + (domFlight.cancelled_pre || 0);
+                
+                // 합계
+                flightData[report.airport].total.planned.total = flightData[report.airport].international.planned.total + flightData[report.airport].domestic.planned.total;
+                flightData[report.airport].total.planned.today = flightData[report.airport].international.planned.today + flightData[report.airport].domestic.planned.today;
+                flightData[report.airport].total.planned.pre = flightData[report.airport].international.planned.pre + flightData[report.airport].domestic.planned.pre;
+                flightData[report.airport].total.cancelled.total = flightData[report.airport].international.cancelled.total + flightData[report.airport].domestic.cancelled.total;
+                flightData[report.airport].total.cancelled.today = flightData[report.airport].international.cancelled.today + flightData[report.airport].domestic.cancelled.today;
+                flightData[report.airport].total.cancelled.pre = flightData[report.airport].international.cancelled.pre + flightData[report.airport].domestic.cancelled.pre;
+                
+                airportCancellations[report.airport] = flightData[report.airport].total.cancelled.total;
+                totalCancelled += flightData[report.airport].total.cancelled.total;
+                totalCancelledToday += flightData[report.airport].total.cancelled.today;
+                totalCancelledPre += flightData[report.airport].total.cancelled.pre;
+            });
+            
+            // 요약 정보 생성
+            const snowAirports = Object.keys(weatherData);
+            const preliminaryAirports = Object.values(weatherData).filter(d => d.preliminary_warning).map(d => d.airport);
+            const advisoryAirports = Object.values(weatherData).filter(d => d.advisory).map(d => d.airport);
+            const warningAirports = Object.values(weatherData).filter(d => d.warning).map(d => d.airport);
+            
+            let summary = '';
+            if (snowAirports.length > 0) {
+                summary += `강설 공항은 ${snowAirports.join(', ')} 공항<br>`;
+            }
+            if (preliminaryAirports.length > 0 || advisoryAirports.length > 0 || warningAirports.length > 0) {
+                summary += `대설 예비특보 공항은 ${preliminaryAirports.length > 0 ? preliminaryAirports.join(', ') : '없음'}, `;
+                summary += `주의보는 ${advisoryAirports.length > 0 ? advisoryAirports.join(', ') : '없음'}, `;
+                summary += `경보는 ${warningAirports.length > 0 ? warningAirports.join(', ') : '없음'}<br>`;
+            }
+            
+            // 결항 편수 요약
+            const cancellationDetails = [];
+            Object.keys(airportCancellations).forEach(airport => {
+                if (airportCancellations[airport] > 0) {
+                    cancellationDetails.push(`${airport} ${airportCancellations[airport]}편`);
+                }
+            });
+            
+            if (totalCancelled > 0) {
+                summary += `- 총 결항 편수는 ${totalCancelled}편, 금일취소 ${totalCancelledToday}편, 사전취소 ${totalCancelledPre}편`;
+                if (cancellationDetails.length > 0) {
+                    summary += `(${cancellationDetails.join(', ')} 결항)`;
+                }
+            }
+            
+            flightSummary.innerHTML = summary || '<p class="empty-message">데이터가 없습니다.</p>';
+            
+            // 테이블 생성
+            if (Object.keys(flightData).length === 0) {
+                flightBody.innerHTML = '<tr><td colspan="8" class="empty-message">데이터가 없습니다.</td></tr>';
+            } else {
+                let html = '';
+                Object.values(flightData).forEach(data => {
+                    // 계
+                    html += `
+                        <tr>
+                            <td rowspan="3">${data.airport}</td>
+                            <td>계</td>
+                            <td>${data.total.planned.total || 0}</td>
+                            <td>${data.total.planned.today || 0}</td>
+                            <td>${data.total.planned.pre || 0}</td>
+                            <td class="highlight">${data.total.cancelled.total || 0}</td>
+                            <td class="highlight">${data.total.cancelled.today || 0}</td>
+                            <td class="highlight">${data.total.cancelled.pre || 0}</td>
+                        </tr>
+                        <tr>
+                            <td>국제</td>
+                            <td>${data.international.planned.total || 0}</td>
+                            <td>${data.international.planned.today || 0}</td>
+                            <td>${data.international.planned.pre || 0}</td>
+                            <td class="highlight">${data.international.cancelled.total || 0}</td>
+                            <td class="highlight">${data.international.cancelled.today || 0}</td>
+                            <td class="highlight">${data.international.cancelled.pre || 0}</td>
+                        </tr>
+                        <tr>
+                            <td>국내</td>
+                            <td>${data.domestic.planned.total || 0}</td>
+                            <td>${data.domestic.planned.today || 0}</td>
+                            <td>${data.domestic.planned.pre || 0}</td>
+                            <td class="highlight">${data.domestic.cancelled.total || 0}</td>
+                            <td class="highlight">${data.domestic.cancelled.today || 0}</td>
+                            <td class="highlight">${data.domestic.cancelled.pre || 0}</td>
+                        </tr>
+                    `;
+                });
+                flightBody.innerHTML = html;
+            }
+            
+            // 주요 조치사항
+            const actionsList = document.getElementById('actionsList');
+            const actionsData = {
+                snow_removal: {},
+                deicing: {},
+                other: {}
+            };
+            
+            reports.forEach(report => {
+                const actions = report.actions || {};
+                if (actions.snow_removal) {
+                    if (!actionsData.snow_removal[report.airport]) {
+                        actionsData.snow_removal[report.airport] = [];
+                    }
+                    actionsData.snow_removal[report.airport].push(actions.snow_removal);
+                }
+                if (actions.deicing) {
+                    if (!actionsData.deicing[report.airport]) {
+                        actionsData.deicing[report.airport] = [];
+                    }
+                    actionsData.deicing[report.airport].push(actions.deicing);
+                }
+                if (actions.other) {
+                    if (!actionsData.other[report.airport]) {
+                        actionsData.other[report.airport] = [];
+                    }
+                    actionsData.other[report.airport].push(actions.other);
+                }
+            });
+            
+            let actionsHtml = '';
+            if (Object.keys(actionsData.snow_removal).length > 0) {
+                actionsHtml += '<div class="action-item"><strong>- 제설</strong><br>';
+                Object.keys(actionsData.snow_removal).forEach(airport => {
+                    actionsHtml += `${airport} : ${actionsData.snow_removal[airport].join(' / ')}<br>`;
+                });
+                actionsHtml += '</div>';
+            }
+            if (Object.keys(actionsData.deicing).length > 0) {
+                actionsHtml += '<div class="action-item"><strong>- 제방빙</strong><br>';
+                Object.keys(actionsData.deicing).forEach(airport => {
+                    actionsHtml += `${airport} : ${actionsData.deicing[airport].join(' / ')}<br>`;
+                });
+                actionsHtml += '</div>';
+            }
+            if (Object.keys(actionsData.other).length > 0) {
+                actionsHtml += '<div class="action-item"><strong>- 기타</strong><br>';
+                Object.keys(actionsData.other).forEach(airport => {
+                    actionsHtml += `${airport} : ${actionsData.other[airport].join(' / ')}<br>`;
+                });
+                actionsHtml += '</div>';
+            }
+            
+            actionsList.innerHTML = actionsHtml || '<p class="empty-message">데이터가 없습니다.</p>';
+            
+            // 피해 및 복구
+            const damageList = document.getElementById('damageList');
+            const damageData = {};
+            
+            reports.forEach(report => {
+                if (report.damage_recovery) {
+                    if (!damageData[report.airport]) {
+                        damageData[report.airport] = [];
+                    }
+                    damageData[report.airport].push(report.damage_recovery);
+                }
+            });
+            
+            let damageHtml = '';
+            Object.keys(damageData).forEach(airport => {
+                damageHtml += `<div class="damage-item"><strong>${airport}</strong> : ${damageData[airport].join(' / ')}</div>`;
+            });
+            
+            damageList.innerHTML = damageHtml || '<p class="empty-message">데이터가 없습니다.</p>';
+        }
+    </script>
+</body>
+</html>
